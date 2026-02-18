@@ -1,5 +1,8 @@
 # Confetto
 
+[![CI](https://github.com/tomrss/confetto/actions/workflows/ci.yml/badge.svg)](https://github.com/tomrss/confetto/actions/workflows/ci.yml)
+[![Release](https://github.com/tomrss/confetto/actions/workflows/release.yml/badge.svg)](https://github.com/tomrss/confetto/actions/workflows/release.yml)
+
 **Sugar-coated configuration for Go applications.**
 
 Confetto loads configuration from multiple sources — YAML files, environment variables, and CLI flags — with a clear priority order and zero boilerplate. 
