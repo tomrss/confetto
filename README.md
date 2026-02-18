@@ -262,4 +262,4 @@ make cover-report
 
 ## License
 
-TODO
+MIT — see [LICENSE](LICENSE) for details.
