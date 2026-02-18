@@ -737,12 +737,12 @@ server:
 		"run",
 		"--verbose",
 		"-d",
-		"--app.name=cli-app",  // CLI overrides YAML
+		"--app.name=cli-app", // CLI overrides YAML
 		"serve",
 		"--workers", "4",
-		"--app.debug=true",    // CLI overrides YAML
+		"--app.debug=true", // CLI overrides YAML
 		"-p", "production",
-		"--server.port=5000",  // CLI overrides ENV which overrides YAML
+		"--server.port=5000", // CLI overrides ENV which overrides YAML
 	}
 
 	cfg := complexConfig{
