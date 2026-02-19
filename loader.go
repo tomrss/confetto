@@ -124,7 +124,7 @@ func (l *Loader) Load() error {
 
 // collectAllParams gathers Param fields from all registered configs.
 func (l *Loader) collectAllParams() []Param {
-	var all []Param
+	all := make([]Param, 0, len(l.registrations))
 	for _, r := range l.registrations {
 		all = append(all, collectParams(r.cfg, r.prefix)...)
 	}
