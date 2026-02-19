@@ -225,6 +225,30 @@ confetto.String().Validate(func(s string) error {
 }).Build()
 ```
 
+### Secret parameters and config dump
+
+Mark sensitive parameters as secret to prevent their values from appearing in logs:
+
+```go
+type Config struct {
+    Host     confetto.StringParam `cfg:"host"`
+    Password confetto.StringParam `cfg:"password"`
+}
+
+cfg := Config{
+    Host:     confetto.String().Default("localhost").Build(),
+    Password: confetto.String().Secret().Required().Build(),
+}
+```
+
+After loading, use `Dump` to get a printable representation of the configuration. Secret values are masked with `****`:
+
+```go
+fmt.Println(confetto.Dump(&cfg))
+// host = localhost
+// password = ****
+```
+
 ### Error handling
 
 All errors (parse, validation, required) are collected into a single `LoadError`:

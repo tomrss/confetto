@@ -29,6 +29,11 @@ func (b *StringBuilder) Desc(d string) *StringBuilder {
 	return b
 }
 
+func (b *StringBuilder) Secret() *StringBuilder {
+	b.p.secret = true
+	return b
+}
+
 func (b *StringBuilder) Validate(fn func(string) error) *StringBuilder {
 	b.p.validators = append(b.p.validators, fn)
 	return b
@@ -62,6 +67,11 @@ func (b *IntBuilder) Required() *IntBuilder {
 
 func (b *IntBuilder) Desc(d string) *IntBuilder {
 	b.p.desc = d
+	return b
+}
+
+func (b *IntBuilder) Secret() *IntBuilder {
+	b.p.secret = true
 	return b
 }
 
@@ -101,6 +111,11 @@ func (b *BoolBuilder) Desc(d string) *BoolBuilder {
 	return b
 }
 
+func (b *BoolBuilder) Secret() *BoolBuilder {
+	b.p.secret = true
+	return b
+}
+
 func (b *BoolBuilder) Validate(fn func(bool) error) *BoolBuilder {
 	b.p.validators = append(b.p.validators, fn)
 	return b
@@ -134,6 +149,11 @@ func (b *FloatBuilder) Required() *FloatBuilder {
 
 func (b *FloatBuilder) Desc(d string) *FloatBuilder {
 	b.p.desc = d
+	return b
+}
+
+func (b *FloatBuilder) Secret() *FloatBuilder {
+	b.p.secret = true
 	return b
 }
 
@@ -173,6 +193,11 @@ func (b *DurationBuilder) Desc(d string) *DurationBuilder {
 	return b
 }
 
+func (b *DurationBuilder) Secret() *DurationBuilder {
+	b.p.secret = true
+	return b
+}
+
 func (b *DurationBuilder) Validate(fn func(time.Duration) error) *DurationBuilder {
 	b.p.validators = append(b.p.validators, fn)
 	return b
@@ -206,6 +231,11 @@ func (b *StringListBuilder) Required() *StringListBuilder {
 
 func (b *StringListBuilder) Desc(d string) *StringListBuilder {
 	b.p.desc = d
+	return b
+}
+
+func (b *StringListBuilder) Secret() *StringListBuilder {
+	b.p.secret = true
 	return b
 }
 
@@ -245,6 +275,11 @@ func (b *IntListBuilder) Desc(d string) *IntListBuilder {
 	return b
 }
 
+func (b *IntListBuilder) Secret() *IntListBuilder {
+	b.p.secret = true
+	return b
+}
+
 func (b *IntListBuilder) Validate(fn func([]int) error) *IntListBuilder {
 	b.p.validators = append(b.p.validators, fn)
 	return b
@@ -278,6 +313,11 @@ func (b *BoolListBuilder) Required() *BoolListBuilder {
 
 func (b *BoolListBuilder) Desc(d string) *BoolListBuilder {
 	b.p.desc = d
+	return b
+}
+
+func (b *BoolListBuilder) Secret() *BoolListBuilder {
+	b.p.secret = true
 	return b
 }
 
@@ -317,6 +357,11 @@ func (b *FloatListBuilder) Desc(d string) *FloatListBuilder {
 	return b
 }
 
+func (b *FloatListBuilder) Secret() *FloatListBuilder {
+	b.p.secret = true
+	return b
+}
+
 func (b *FloatListBuilder) Validate(fn func([]float64) error) *FloatListBuilder {
 	b.p.validators = append(b.p.validators, fn)
 	return b
@@ -350,6 +395,11 @@ func (b *DurationListBuilder) Required() *DurationListBuilder {
 
 func (b *DurationListBuilder) Desc(d string) *DurationListBuilder {
 	b.p.desc = d
+	return b
+}
+
+func (b *DurationListBuilder) Secret() *DurationListBuilder {
+	b.p.secret = true
 	return b
 }
 

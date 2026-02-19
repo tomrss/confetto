@@ -1,5 +1,7 @@
 package confetto
 
+import "fmt"
+
 // Param is the interface that all parameter types implement.
 type Param interface {
 	// key returns the configuration key for this parameter.
@@ -18,6 +20,10 @@ type Param interface {
 	IsSet() bool
 	// hasDefault returns true if a default value was configured.
 	hasDefault() bool
+	// isSecret returns true if this parameter contains sensitive data.
+	isSecret() bool
+	// stringValue returns the current value formatted as a string.
+	stringValue() string
 }
 
 // param is the internal generic parameter type that holds configuration for a single value.
@@ -29,6 +35,7 @@ type param[T any] struct {
 	required   bool
 	desc       string
 	k          string
+	secret     bool
 	validators []func(T) error
 }
 
@@ -54,6 +61,14 @@ func (p *param[T]) isRequired() bool {
 
 func (p *param[T]) hasDefault() bool {
 	return p.hasDefVal
+}
+
+func (p *param[T]) isSecret() bool {
+	return p.secret
+}
+
+func (p *param[T]) stringValue() string {
+	return fmt.Sprintf("%v", p.value)
 }
 
 func (p *param[T]) validate() error {
