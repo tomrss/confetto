@@ -63,36 +63,55 @@ func DefaultConfigPaths(appName string) []string {
 	return paths
 }
 
-// Load loads configuration from multiple sources into the provided struct.
-// The struct must contain fields that implement the Param interface.
+type registration struct {
+	prefix string
+	cfg    any
+}
+
+// Loader supports modular configuration loading. Modules register their
+// config sub-structs independently with Register, then a single Load
+// call populates them all from the same set of sources.
+type Loader struct {
+	opts          Options
+	registrations []registration
+}
+
+// NewLoader creates a new Loader with the given options.
+func NewLoader(opts Options) *Loader {
+	return &Loader{opts: opts}
+}
+
+// Register adds a config struct to be populated on Load.
+// The prefix is prepended to all keys in the struct (dot-separated).
+// Use an empty prefix for top-level keys.
+func (l *Loader) Register(prefix string, cfg any) {
+	l.registrations = append(l.registrations, registration{prefix: prefix, cfg: cfg})
+}
+
+// Load populates all registered config structs from sources.
 // Sources are checked in order of priority: CLI > ENV > YAML > default.
-func Load(cfg any, opts Options) error {
+func (l *Loader) Load() error {
+	opts := l.opts
 	if opts.ListSeparator == "" {
 		opts.ListSeparator = ","
 	}
 
-	// determine config file path
 	configFile := opts.ConfigFile
 	if configFile == "" && len(opts.ConfigPaths) > 0 {
 		configFile = FindConfigFile(opts.ConfigPaths)
 	}
 
-	// initialize sources
 	cliSrc := newCLISource(opts.Args)
 	envSrc := newEnvSource(opts.EnvPrefix)
 	yamlSrc, err := newYAMLSource(configFile)
 	if err != nil {
 		return err
 	}
-
 	sources := []source{cliSrc, envSrc, yamlSrc}
 
-	// collect all params via reflection
-	params := collectParams(cfg, "")
+	params := l.collectAllParams()
 
 	loadErr := &LoadError{}
-
-	// for each param, try to load from sources in priority order
 	for _, p := range params {
 		loadParam(p, sources, opts, loadErr)
 	}
@@ -101,6 +120,24 @@ func Load(cfg any, opts Options) error {
 		return loadErr
 	}
 	return nil
+}
+
+// collectAllParams gathers Param fields from all registered configs.
+func (l *Loader) collectAllParams() []Param {
+	var all []Param
+	for _, r := range l.registrations {
+		all = append(all, collectParams(r.cfg, r.prefix)...)
+	}
+	return all
+}
+
+// Load loads configuration from multiple sources into the provided struct.
+// The struct must contain fields that implement the Param interface.
+// Sources are checked in order of priority: CLI > ENV > YAML > default.
+func Load(cfg any, opts Options) error {
+	l := NewLoader(opts)
+	l.Register("", cfg)
+	return l.Load()
 }
 
 func loadParam(p Param, sources []source, opts Options, loadErr *LoadError) {

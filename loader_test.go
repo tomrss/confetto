@@ -1115,3 +1115,323 @@ func TestLoad_DurationListParam(t *testing.T) {
 		}
 	})
 }
+
+// --- Loader tests ---
+
+type testDBLoaderConfig struct {
+	Host StringParam `cfg:"host"`
+	Port IntParam    `cfg:"port"`
+}
+
+type testServerLoaderConfig struct {
+	Addr    StringParam `cfg:"addr"`
+	Verbose BoolParam   `cfg:"verbose"`
+}
+
+type testBookingLoaderConfig struct {
+	MaxSlots IntParam      `cfg:"max_slots"`
+	Timeout  DurationParam `cfg:"timeout"`
+}
+
+func TestLoader_BasicRegistration(t *testing.T) {
+	os.Setenv("DB_HOST", "env.db.com")
+	os.Setenv("DB_PORT", "5434")
+	os.Setenv("BOOKING_MAX_SLOTS", "20")
+	defer func() {
+		os.Unsetenv("DB_HOST")
+		os.Unsetenv("DB_PORT")
+		os.Unsetenv("BOOKING_MAX_SLOTS")
+	}()
+
+	dbCfg := testDBLoaderConfig{
+		Host: String().Default("localhost").Build(),
+		Port: Int().Default(5432).Build(),
+	}
+	bookingCfg := testBookingLoaderConfig{
+		MaxSlots: Int().Default(10).Build(),
+		Timeout:  Duration().Default(30 * time.Second).Build(),
+	}
+
+	l := NewLoader(Options{})
+	l.Register("db", &dbCfg)
+	l.Register("booking", &bookingCfg)
+
+	err := l.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if dbCfg.Host.Get() != "env.db.com" {
+		t.Errorf("expected env.db.com, got %s", dbCfg.Host.Get())
+	}
+	if dbCfg.Port.Get() != 5434 {
+		t.Errorf("expected 5434, got %d", dbCfg.Port.Get())
+	}
+	if bookingCfg.MaxSlots.Get() != 20 {
+		t.Errorf("expected 20, got %d", bookingCfg.MaxSlots.Get())
+	}
+	if bookingCfg.Timeout.Get() != 30*time.Second {
+		t.Errorf("expected 30s, got %v", bookingCfg.Timeout.Get())
+	}
+}
+
+func TestLoader_CLIArgs(t *testing.T) {
+	dbCfg := testDBLoaderConfig{
+		Host: String().Default("localhost").Build(),
+		Port: Int().Default(5432).Build(),
+	}
+	bookingCfg := testBookingLoaderConfig{
+		MaxSlots: Int().Default(10).Build(),
+		Timeout:  Duration().Default(30 * time.Second).Build(),
+	}
+
+	args := []string{
+		"--db.host=cli.db.com",
+		"--db.port", "9999",
+		"--booking.max_slots=30",
+		"--booking.timeout=1m",
+	}
+
+	l := NewLoader(Options{Args: args})
+	l.Register("db", &dbCfg)
+	l.Register("booking", &bookingCfg)
+
+	err := l.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if dbCfg.Host.Get() != "cli.db.com" {
+		t.Errorf("expected cli.db.com, got %s", dbCfg.Host.Get())
+	}
+	if dbCfg.Port.Get() != 9999 {
+		t.Errorf("expected 9999, got %d", dbCfg.Port.Get())
+	}
+	if bookingCfg.MaxSlots.Get() != 30 {
+		t.Errorf("expected 30, got %d", bookingCfg.MaxSlots.Get())
+	}
+	if bookingCfg.Timeout.Get() != time.Minute {
+		t.Errorf("expected 1m, got %v", bookingCfg.Timeout.Get())
+	}
+}
+
+func TestLoader_YAMLFile(t *testing.T) {
+	yamlContent := `
+db:
+  host: yaml.db.com
+  port: 5435
+booking:
+  max_slots: 15
+  timeout: 2m
+`
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configFile, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	dbCfg := testDBLoaderConfig{
+		Host: String().Default("localhost").Build(),
+		Port: Int().Default(5432).Build(),
+	}
+	bookingCfg := testBookingLoaderConfig{
+		MaxSlots: Int().Default(10).Build(),
+		Timeout:  Duration().Default(30 * time.Second).Build(),
+	}
+
+	l := NewLoader(Options{ConfigFile: configFile})
+	l.Register("db", &dbCfg)
+	l.Register("booking", &bookingCfg)
+
+	err := l.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if dbCfg.Host.Get() != "yaml.db.com" {
+		t.Errorf("expected yaml.db.com, got %s", dbCfg.Host.Get())
+	}
+	if dbCfg.Port.Get() != 5435 {
+		t.Errorf("expected 5435, got %d", dbCfg.Port.Get())
+	}
+	if bookingCfg.MaxSlots.Get() != 15 {
+		t.Errorf("expected 15, got %d", bookingCfg.MaxSlots.Get())
+	}
+	if bookingCfg.Timeout.Get() != 2*time.Minute {
+		t.Errorf("expected 2m, got %v", bookingCfg.Timeout.Get())
+	}
+}
+
+func TestLoader_SourcePriority(t *testing.T) {
+	yamlContent := `
+db:
+  host: yaml.db.com
+  port: 1111
+booking:
+  max_slots: 5
+`
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, "config.yaml")
+	if err := os.WriteFile(configFile, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	os.Setenv("TEST_DB_HOST", "env.db.com")
+	os.Setenv("TEST_DB_PORT", "2222")
+	os.Setenv("TEST_BOOKING_MAX_SLOTS", "25")
+	defer func() {
+		os.Unsetenv("TEST_DB_HOST")
+		os.Unsetenv("TEST_DB_PORT")
+		os.Unsetenv("TEST_BOOKING_MAX_SLOTS")
+	}()
+
+	args := []string{"--db.host=cli.db.com"}
+
+	dbCfg := testDBLoaderConfig{
+		Host: String().Default("localhost").Build(),
+		Port: Int().Default(5432).Build(),
+	}
+	bookingCfg := testBookingLoaderConfig{
+		MaxSlots: Int().Default(10).Build(),
+		Timeout:  Duration().Default(30 * time.Second).Build(),
+	}
+
+	l := NewLoader(Options{ConfigFile: configFile, EnvPrefix: "TEST", Args: args})
+	l.Register("db", &dbCfg)
+	l.Register("booking", &bookingCfg)
+
+	err := l.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// CLI wins for db.host
+	if dbCfg.Host.Get() != "cli.db.com" {
+		t.Errorf("expected cli.db.com (CLI priority), got %s", dbCfg.Host.Get())
+	}
+	// ENV wins for db.port (no CLI arg)
+	if dbCfg.Port.Get() != 2222 {
+		t.Errorf("expected 2222 (ENV priority), got %d", dbCfg.Port.Get())
+	}
+	// ENV wins for booking.max_slots (no CLI arg)
+	if bookingCfg.MaxSlots.Get() != 25 {
+		t.Errorf("expected 25 (ENV priority), got %d", bookingCfg.MaxSlots.Get())
+	}
+	// YAML wins for booking.timeout (no CLI or ENV)
+	if bookingCfg.Timeout.Get() != 30*time.Second {
+		t.Errorf("expected 30s (default, no YAML key), got %v", bookingCfg.Timeout.Get())
+	}
+}
+
+func TestLoader_ValidationAndRequired(t *testing.T) {
+	dbCfg := testDBLoaderConfig{
+		Host: String().Required().Build(),
+		Port: Int().Default(5432).Validate(Range(1, 65535)).Build(),
+	}
+	bookingCfg := testBookingLoaderConfig{
+		MaxSlots: Int().Required().Build(),
+		Timeout:  Duration().Default(30 * time.Second).Build(),
+	}
+
+	args := []string{"--db.port=99999"} // validation error
+
+	l := NewLoader(Options{Args: args})
+	l.Register("db", &dbCfg)
+	l.Register("booking", &bookingCfg)
+
+	err := l.Load()
+	if err == nil {
+		t.Fatal("expected errors")
+	}
+
+	loadErr, ok := err.(*LoadError)
+	if !ok {
+		t.Fatalf("expected LoadError, got %T", err)
+	}
+
+	// should have at least 3 errors: 1 validation (port) + 2 required (host, max_slots)
+	if len(loadErr.Errors) < 3 {
+		t.Errorf("expected at least 3 errors, got %d: %v", len(loadErr.Errors), loadErr.Errors)
+	}
+
+	var foundValidation, foundRequired bool
+	for _, e := range loadErr.Errors {
+		if _, ok := e.(*ValidationError); ok {
+			foundValidation = true
+		}
+		if _, ok := e.(*RequiredError); ok {
+			foundRequired = true
+		}
+	}
+	if !foundValidation {
+		t.Error("expected ValidationError in LoadError")
+	}
+	if !foundRequired {
+		t.Error("expected RequiredError in LoadError")
+	}
+}
+
+func TestLoader_Dump(t *testing.T) {
+	dbCfg := testDBLoaderConfig{
+		Host: String().Default("localhost").Build(),
+		Port: Int().Default(5432).Build(),
+	}
+	bookingCfg := testBookingLoaderConfig{
+		MaxSlots: Int().Default(10).Build(),
+		Timeout:  Duration().Default(30 * time.Second).Build(),
+	}
+
+	l := NewLoader(Options{Args: []string{"--db.host=myhost"}})
+	l.Register("db", &dbCfg)
+	l.Register("booking", &bookingCfg)
+
+	err := l.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	dump := l.Dump()
+
+	// check that prefixed keys appear
+	if !strings.Contains(dump, "db.host = myhost") {
+		t.Errorf("expected 'db.host = myhost' in dump, got:\n%s", dump)
+	}
+	if !strings.Contains(dump, "db.port = 5432") {
+		t.Errorf("expected 'db.port = 5432' in dump, got:\n%s", dump)
+	}
+	if !strings.Contains(dump, "booking.max_slots = 10") {
+		t.Errorf("expected 'booking.max_slots = 10' in dump, got:\n%s", dump)
+	}
+	if !strings.Contains(dump, "booking.timeout = 30s") {
+		t.Errorf("expected 'booking.timeout = 30s' in dump, got:\n%s", dump)
+	}
+}
+
+func TestLoader_EmptyPrefix(t *testing.T) {
+	// Register("", cfg) should behave exactly like the top-level Load()
+	cfg := newTestConfig()
+
+	args := []string{
+		"--db.host=emptyprefix.db.com",
+		"--server.addr=:9090",
+	}
+
+	l := NewLoader(Options{Args: args})
+	l.Register("", &cfg)
+
+	err := l.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.DB.Host.Get() != "emptyprefix.db.com" {
+		t.Errorf("expected emptyprefix.db.com, got %s", cfg.DB.Host.Get())
+	}
+	if cfg.Server.Addr.Get() != ":9090" {
+		t.Errorf("expected :9090, got %s", cfg.Server.Addr.Get())
+	}
+	// defaults should still work
+	if cfg.DB.Port.Get() != 5432 {
+		t.Errorf("expected 5432, got %d", cfg.DB.Port.Get())
+	}
+}

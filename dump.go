@@ -10,8 +10,17 @@ const maskedValue = "****"
 // in the provided struct. Secret parameters are masked with "****".
 // Parameters that are not set and have no default value are shown as "<not set>".
 func Dump(cfg any) string {
-	params := collectParams(cfg, "")
+	return dumpParams(collectParams(cfg, ""))
+}
 
+// Dump returns a string representation of all configuration parameters
+// across all registered configs. Secret parameters are masked with "****".
+// Parameters that are not set and have no default value are shown as "<not set>".
+func (l *Loader) Dump() string {
+	return dumpParams(l.collectAllParams())
+}
+
+func dumpParams(params []Param) string {
 	var b strings.Builder
 	for i, p := range params {
 		if i > 0 {

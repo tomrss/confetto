@@ -249,6 +249,29 @@ fmt.Println(confetto.Dump(&cfg))
 // password = ****
 ```
 
+### Modular configuration with Loader
+
+If you prefer to split your configuration across multiple independent structs instead of a single monolithic one, use `Loader`:
+
+```go
+loader := confetto.NewLoader(confetto.Options{
+    EnvPrefix: "MYAPP",
+    Args:      os.Args[1:],
+})
+loader.Register("db", &dbCfg)
+loader.Register("server", &serverCfg)
+
+if err := loader.Load(); err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(loader.Dump())
+```
+
+Each call to `Register` associates a prefix with a config struct. The prefix is prepended to all keys in that struct (e.g. `Register("db", &dbCfg)` produces keys like `db.host`). Use an empty prefix for top-level keys.
+
+Sources, priority, validation, and error aggregation work exactly the same as with the package-level `Load()`.
+
 ### Error handling
 
 All errors (parse, validation, required) are collected into a single `LoadError`:
