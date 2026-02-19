@@ -3,6 +3,7 @@
 [![CI](https://github.com/tomrss/confetto/actions/workflows/ci.yml/badge.svg)](https://github.com/tomrss/confetto/actions/workflows/ci.yml)
 [![Release](https://github.com/tomrss/confetto/actions/workflows/release.yml/badge.svg)](https://github.com/tomrss/confetto/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tomrss/confetto)](https://goreportcard.com/report/github.com/tomrss/confetto)
+[![PkgGoDev](https://pkg.go.dev/badge/mod/github.com/tomrss/confetto)](https://pkg.go.dev/mod/github.com/tomrss/confetto)
 
 **Sugar-coated configuration for Go applications.**
 
